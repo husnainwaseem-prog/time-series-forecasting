@@ -69,6 +69,25 @@ def test_xgb_fit_and_recursive_forecast(series):
     assert np.all(np.isfinite(preds))
 
 
+def test_xgb_time_index_continues_from_training_length():
+    """With a truncated history (as in the API artifact) t must still be ~n_obs."""
+    class Recorder:
+        def __init__(self):
+            self.ts = []
+
+        def predict(self, X):
+            self.ts.append(float(X["t"].iloc[0]))
+            return [100.0]
+
+    idx = pd.date_range("1959-01-01", periods=24, freq="MS")
+    model = XGBModel.__new__(XGBModel)
+    model.model_ = Recorder()
+    model.history_ = pd.Series(np.arange(24, dtype=float), index=idx)
+    model.t_offset_ = 144 - 24
+    model.forecast(3)
+    assert model.model_.ts == [144.0, 145.0, 146.0]
+
+
 def test_mae_rmse_known_values():
     assert mae([1, 2, 3], [1, 2, 4]) == pytest.approx(1 / 3)
     assert rmse([1, 2, 3], [1, 2, 4]) == pytest.approx(np.sqrt(1 / 3))

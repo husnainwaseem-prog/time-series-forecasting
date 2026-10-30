@@ -40,6 +40,7 @@ def save_artifact(model, model_name, series, metrics):
         "fitted": fitted,                       # ARIMA results / XGB regressor
         "last_values": list(series.iloc[-24:]),  # history for naive / recursive
         "last_date": series.index[-1].isoformat(),
+        "n_obs": len(series),                    # needed for XGBoost's time index t
         "metrics": metrics,
     }
     path = os.path.join(MODELS_DIR, "best_model.joblib")

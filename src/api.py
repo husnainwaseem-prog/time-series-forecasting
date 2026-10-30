@@ -36,6 +36,8 @@ def _forecast(periods):
         dates = [LAST_DATE - pd.DateOffset(months=i)
                  for i in reversed(range(len(values)))]
         model.history_ = pd.Series(values, index=pd.DatetimeIndex(dates))
+        # only the last 24 months are stored; shift t so it matches training
+        model.t_offset_ = ARTIFACT.get("n_obs", len(values)) - len(values)
         preds = model.forecast(periods)
     elif name == "naive_seasonal":
         model = NaiveSeasonal().fit(pd.Series(ARTIFACT["last_values"]))

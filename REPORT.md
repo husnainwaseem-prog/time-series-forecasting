@@ -30,17 +30,40 @@ Metric reported is the mean over folds.
 
 ![forecasts vs actual](results/forecast_plot.png)
 
+## Per-fold results (RMSE)
+
+| Model | Fold 1 (1958) | Fold 2 (1959) | Fold 3 (1960) | Mean |
+|---|---|---|---|---|
+| Naive seasonal baseline | 17.01 | 49.25 | 50.71 | 38.99 |
+| ARIMA | 20.46 | 46.60 | 21.78 | **29.61** |
+| XGBoost | 31.05 | 43.78 | 40.78 | 38.54 |
+
 ## Why ARIMA won
-- The series is dominated by two smooth, global patterns — a steady trend and a
-  stable yearly season. ARIMA's differencing + seasonal terms capture exactly
-  that structure with a handful of parameters, so it generalises across folds.
-- The naive baseline copies last year's level but ignores the trend, so it
-  under-predicts every fold as passenger numbers keep climbing.
-- XGBoost learns local lag patterns well, but with only 144 months the trees
-  cannot extrapolate the rising trend beyond the levels seen in training —
-  a known weakness of tree models on trending series. Its recursive forecasts
-  also accumulate error month by month, while ARIMA's seasonal structure stays
-  anchored.
+ARIMA has the lowest mean MAE (26.58) and RMSE (29.61), about 26% (MAE) and 24% (RMSE)
+better than the naive baseline. Where the gap comes from:
+
+- **It models trend and season explicitly.** The series is a steady upward trend
+  with a stable yearly cycle. Differencing plus seasonal terms capture that with
+  a handful of parameters. In folds 2 and 3 the naive baseline is off by ~47
+  passengers every month (mean error +47, i.e. it under-predicts) because it
+  repeats last year's level and ignores growth. ARIMA's fold 3 RMSE is 21.8
+  against 50.7 for naive.
+- **XGBoost is held back by the trend.** Tree models predict within the range of
+  values seen in training, so on a rising series they tend to lag behind new
+  highs, and recursive multi-step forecasts compound error. Its fold 3 RMSE
+  (40.8) is nearly double ARIMA's. This is the likely cause, not something
+  isolated with a separate experiment.
+
+**Caveats (read before trusting the ranking):**
+- The win is not uniform. In fold 2 (1959) XGBoost (RMSE 43.8) beat ARIMA (46.6),
+  and in fold 1 (1958) the naive baseline beat both models (17.0 vs 20.5 and 31.1).
+  ARIMA's advantage comes mostly from fold 3, so with only 3 folds of 12 months
+  the ranking between ARIMA and XGBoost carries real uncertainty.
+- The ARIMA order is re-selected by AIC inside every fold (no look-ahead), which
+  is the fair way to do it but means the order can differ between folds.
+- With 144 points and one series, differences of a few passengers are not
+  meaningful; the clear conclusions are that both ARIMA and XGBoost are
+  competitive with the baseline, and that ARIMA is the best of the three here.
 
 ## Serving
 The winning ARIMA model, refit on all 144 months, is served by the FastAPI app
@@ -52,6 +75,6 @@ continuing the trend and seasonal shape of the 1950s.
 ```
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m src.cli train     # CV, winner, artifact, results/
-.venv/bin/python -m pytest tests/ -q  # 13 tests
+.venv/bin/python -m pytest tests/ -q  # 14 tests
 .venv/bin/python -m src.cli serve     # API on http://127.0.0.1:8000
 ```

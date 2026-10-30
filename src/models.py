@@ -96,6 +96,7 @@ class XGBModel:
         X, target = make_frame(y)
         self.model_.fit(X, target)
         self.history_ = y.copy()
+        self.t_offset_ = 0  # history_ starts at t=0 when fitted on the full series
         return self
 
     def forecast(self, n):
@@ -104,7 +105,10 @@ class XGBModel:
         preds = []
         for _ in range(n):
             next_date = dates[-1] + pd.DateOffset(months=1)
-            row = feature_row(values[-N_LAGS:], next_date, len(values))
+            # t must continue the training time index even when only a short
+            # tail of history is kept (API artifact) -> t_offset_ corrects it.
+            t = getattr(self, "t_offset_", 0) + len(values)
+            row = feature_row(values[-N_LAGS:], next_date, t)
             pred = float(self.model_.predict(pd.DataFrame([row]))[0])
             preds.append(pred)
             values.append(pred)

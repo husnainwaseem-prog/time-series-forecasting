@@ -24,9 +24,11 @@ models, compare them honestly, and serve the winner through an API.
 | **ARIMA (winner)** | **26.58** | **29.61** |
 | XGBoost | 32.93 | 38.54 |
 
-ARIMA wins: the series is trend + stable yearly seasonality, which SARIMAX
-captures with a few parameters; XGBoost can't extrapolate the trend from only
-144 months and its recursive forecasts accumulate error. Full story in `REPORT.md`.
+ARIMA wins on both metrics: the series is trend + stable yearly seasonality,
+which SARIMAX captures with a few parameters, while XGBoost struggles to follow
+the rising trend and its recursive forecasts accumulate error. The margin is not
+uniform across folds (XGBoost beats ARIMA in fold 2), so treat the ranking
+between those two with some caution. Per-fold numbers and caveats are in `REPORT.md`.
 
 ## Quickstart
 
@@ -36,7 +38,7 @@ python -m venv .venv
 # Windows cmd:        .venv\Scripts\activate
 .venv/bin/pip install -r requirements.txt   # Linux/macOS
 .venv/bin/python -m src.cli train           # compare models, save winner + results/
-.venv/bin/python -m pytest tests/ -q        # 13/13 tests
+.venv/bin/python -m pytest tests/ -q        # 14 tests
 .venv/bin/python -m src.cli forecast --periods 12
 .venv/bin/python -m src.cli serve           # API → http://127.0.0.1:8000
 ```
@@ -54,5 +56,5 @@ src/            data_loader, features, models, evaluate, train, api, cli
 data/           airline-passengers.csv (bundled public dataset)
 models/         best_model.joblib (winning ARIMA, refit on all data)
 results/        metrics.json, results_table.md, forecast_plot.png
-tests/          13 pytest tests
+tests/          14 pytest tests
 ```
